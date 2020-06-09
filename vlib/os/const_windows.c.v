@@ -6,7 +6,7 @@ const (
 	error_insufficient_buffer          = 0x0082
 )
 
-const (
+pub const (
 	file_share_read                    = 0x01
 	file_share_write                   = 0x02
 	file_share_delete                  = 0x04
@@ -31,7 +31,7 @@ const (
 	file_action_renamed_new_name       = 0x05
 )
 
-const (
+pub const (
 	file_attr_readonly                 = 0x00000001
 	file_attr_hidden                   = 0x00000002
 	file_attr_system                   = 0x00000004
@@ -155,4 +155,11 @@ pub const (
 
 	wm_settingchange                   = 0x001A
 	smto_abortifhung                   = 0x0002
+)
+
+// File Permissions
+
+pub const (
+	generic_read                       = 0x80000000
+	open_existing                      = 0x00000003
 )

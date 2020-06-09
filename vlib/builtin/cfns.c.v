@@ -184,40 +184,6 @@ fn C.syscall() int
 fn C.sysctl() int
 
 
-fn C._fileno(int) int
-
-
-fn C._get_osfhandle(fd int) C.intptr_t
-
-
-fn C.GetModuleFileName() int
-fn C.GetModuleFileNameW(hModule voidptr, lpFilename &u16, nSize u32) u32
-
-
-fn C.CreateFile() voidptr
-fn C.CreateFileW(lpFilename &u16, dwDesiredAccess u32, dwShareMode u32, lpSecurityAttributes &u16, dwCreationDisposition u32, dwFlagsAndAttributes u32, hTemplateFile voidptr) u32
-
-
-fn C.GetFinalPathNameByHandle() int
-fn C.GetFinalPathNameByHandleW(hFile voidptr, lpFilePath &u16, nSize u32, dwFlags u32) u32
-
-
-fn C.CreatePipe(hReadPipe &voidptr, hWritePipe &voidptr, lpPipeAttributes voidptr, nSize u32) bool
-
-
-fn C.SetHandleInformation(hObject voidptr, dwMask u32, dw_flags u32) bool
-
-
-fn C.ExpandEnvironmentStringsW(lpSrc &u16, lpDst &u16, nSize u32) u32
-
-
-fn C.SendMessageTimeout() u32
-fn C.SendMessageTimeoutW(hWnd voidptr, Msg u32, wParam &u16, lParam &u32, fuFlags u32, uTimeout u32, lpdwResult &u64) u32
-
-
-fn C.CreateProcessW(lpApplicationName &u16, lpCommandLine &u16, lpProcessAttributes voidptr, lpThreadAttributes voidptr, bInheritHandles bool, dwCreationFlags u32, lpEnvironment voidptr, lpCurrentDirectory &u16, lpStartupInfo voidptr, lpProcessInformation voidptr) bool
-
-
 fn C.ReadFile(hFile voidptr, lpBuffer voidptr, nNumberOfBytesToRead u32, lpNumberOfBytesRead voidptr, lpOverlapped voidptr) bool
 
 

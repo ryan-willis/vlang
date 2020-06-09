@@ -262,7 +262,7 @@ pub fn exec(cmd string) ?Result {
 		dw_flags: u32(C.STARTF_USESTDHANDLES)
 	}
 	command_line := [32768]u16
-	C.ExpandEnvironmentStringsW(cmd.to_wide(), voidptr(&command_line), 32768)
+	C.ExpandEnvironmentStrings(cmd.to_wide(), voidptr(&command_line), 32768)
 	create_process_ok := C.CreateProcessW(0, command_line, 0, 0, C.TRUE, 0, 0, 0, voidptr(&start_info), voidptr(&proc_info))
 	if !create_process_ok {
 		error_msg := get_error_msg(int(C.GetLastError()))

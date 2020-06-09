@@ -910,7 +910,7 @@ pub fn executable() string {
 		mut result := &u16(vcalloc(size))
 		len := C.GetModuleFileName(0, result, max)
 		// simply opens the handle
-		file := C.CreateFile(result, 0x800000000, 1, 0, 3, 80, 0)
+		file := C.CreateFile(result, os.generic_read, os.file_share_read, 0, os.open_existing, os.file_attr_normal, 0)
 		defer {
 			C.CloseHandle(file)
 		}
@@ -920,14 +920,14 @@ pub fn executable() string {
 			mut final_len := C.GetFinalPathNameByHandle(file, final, size, 0)
 			if final_len < size {
 				ret := string_from_wide2(final, final_len)
-				// remove '\\?\' from beginning (see link above)
+				// remove '\\?\' from beginning
 				return ret[4..]
 			}
 			else {
 				eprintln('os.executable() saw that the executable file path was too long')
 			}
 		}
-		return string_from_wide2(result, len)
+		return string_from_wide2(result, int(len))
 	}
 	$if macos {
 		mut result := vcalloc(max_path_len)
