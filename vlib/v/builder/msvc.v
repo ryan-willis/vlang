@@ -24,14 +24,6 @@ struct MsvcResult {
 // Mimics a HKEY
 type RegKey voidptr
 
-// Taken from the windows SDK
-const (
-	hkey_local_machine     = RegKey(0x80000002)
-	key_query_value        = (0x0001)
-	key_wow64_32key        = (0x0200)
-	key_enumerate_sub_keys = (0x0008)
-)
-
 // Given a root key look for one of the subkeys in 'versions' and get the path
 fn find_windows_kit_internal(key RegKey, versions []string) ?string {
 	$if windows {
@@ -80,20 +72,19 @@ fn find_windows_kit_root(host_arch string) ?WindowsKit {
 	$if windows {
 		root_key := RegKey(0)
 		path := 'SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots'
-		rc := C.RegOpenKeyEx(hkey_local_machine, path.to_wide(), 0, key_query_value | key_wow64_32key |
-			key_enumerate_sub_keys, &root_key)
+		rc := C.RegOpenKeyEx(os.hkey_local_machine, path.to_wide(), 0, os.key_query_value |
+			os.key_wow64_32key | os.key_enumerate_sub_keys, &root_key)
 		defer {
 			C.RegCloseKey(root_key)
 		}
 		if rc != 0 {
 			return error('Unable to open root key')
 		}
-		// Try and find win10 kit
+		// Try and find win8/win10 kit
 		kit_root := find_windows_kit_internal(root_key, ['KitsRoot10', 'KitsRoot81']) or {
 			return error('Unable to find a windows kit')
 		}
 		kit_lib := kit_root + 'Lib'
-		// println(kit_lib)
 		files := os.ls(kit_lib) or {
 			panic(err)
 		}

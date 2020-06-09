@@ -317,7 +317,7 @@ pub:
 	// status_ constants
 	code u32
 	flags u32
-	
+
 	record &ExceptionRecord
 	address voidptr
 	param_count u32
