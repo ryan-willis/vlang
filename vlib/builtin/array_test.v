@@ -529,6 +529,21 @@ fn test_filter() {
 	//assert arr.filter(arr % 2).len == 5
 }
 
+fn test_anon_fn_filter() {
+	filter_num := fn (i int) bool {
+		return i % 2 == 0
+	}
+	assert [1,2,3,4,5].filter(filter_num) == [2,4]
+}
+
+fn test_anon_fn_arg_filter() {
+	a := [1,2,3,4].filter(fn (i int) bool {
+		return i % 2 == 0
+	})
+
+	assert a == [2,4]
+}
+
 fn map_test_helper_1(i int) int {
 	return i * i
 }
@@ -594,6 +609,18 @@ fn test_anon_fn_map() {
 		return i + 1
 	}
 	assert [1,2,3].map(add_num) == [2,3,4]
+}
+
+fn test_mutli_anon_fn_map() {
+	a := [1,2,3].map(fn (i int) int {
+		return i + 1
+	})
+
+	b := [1,2,3].map(fn (i int) int {
+		return i + 2
+	})
+	assert a == [2,3,4]
+	assert b == [3,4,5]
 }
 
 fn test_anon_fn_arg_map() {
@@ -788,4 +815,14 @@ fn test_array_with_cap() {
 	a5 := []int{len:1, cap:10}
 	assert a5.len == 1
 	assert a5.cap == 10
+}
+
+fn test_mutli_array_index() {
+	mut a := [][]int{len:2, init: []int{len:3, init:0}}
+	a[0][0] = 1
+	assert '$a' == '[[1, 0, 0], [0, 0, 0]]'
+
+	mut b := [[0].repeat(3)].repeat(2)
+	b[0][0] = 1
+	assert '$b' == '[[1, 0, 0], [0, 0, 0]]'
 }

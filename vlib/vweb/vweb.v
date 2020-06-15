@@ -131,13 +131,13 @@ pub fn (ctx &Context) get_header(key string) string {
 pub fn run<T>(port int) {
 	mut app := T{}
 	run_app<T>(mut app, port)
-}    
+}
 
 pub fn run_app<T>(mut app T, port int) {
-	println('Running a Vweb app on http://localhost:$port ...')
+	println('Running a Vweb app on http://localhost:$port')
 	l := net.listen(port) or { panic('failed to listen') }
 	app.vweb = Context{}
-	app.init()
+	app.init_once()
 	//app.reset()
 	for {
 		conn := l.accept() or { panic('accept() failed') }
@@ -173,8 +173,10 @@ fn handle_conn<T>(conn net.Socket, mut app T) {
 	//mut app := app_
 	//first_line := strip(lines[0])
 	first_line := conn.read_line()
-	println('firstline="$first_line"')
-	$if debug { println(first_line) }
+	$if debug {
+		println('firstline="$first_line"')
+	}
+
 	// Parse the first line
 	// "GET / HTTP/1.1"
 	//first_line := s.all_before('\n')
@@ -282,9 +284,10 @@ fn handle_conn<T>(conn net.Socket, mut app T) {
 	}
 
 	// Call the right action
-	//$if debug {
+	$if debug {
 		println('action=$action')
-	//}
+	}
+	app.init()
 	app.$action()
 	/*
 	app.$action() or {
@@ -292,7 +295,7 @@ fn handle_conn<T>(conn net.Socket, mut app T) {
 	}
 	*/
 	conn.close() or {}
-	app.reset()
+	//app.reset()
 	return
 }
 

@@ -85,6 +85,7 @@ pub struct C.timeval {
 fn C.localtime(t &C.time_t) &C.tm
 fn C.time(t &C.time_t) C.time_t
 
+
 // now returns current local time.
 pub fn now() Time {
 	$if macos {
@@ -104,6 +105,27 @@ pub fn now() Time {
 	t := C.time(0)
 	now := C.localtime(&t)
 	return convert_ctime(now, 0)
+}
+
+// utc returns the current time in utc
+pub fn utc() Time {
+	$if macos {
+		return darwin_utc()
+	}
+	$if windows {
+		return win_utc()
+	}
+	$if solaris {
+		return solaris_utc()
+	}
+	$if linux {
+		return linux_utc()
+	}
+	// defaults to most common feature, the microsecond precision is not available
+	// in this API call
+	t := C.time(0)
+	_ = C.time(&t)
+	return unix2(int(t), 0)
 }
 
 // smonth returns month name.
@@ -167,6 +189,44 @@ fn since(t Time) int {
 // relative returns a string representation of difference between time
 // and current time.
 pub fn (t Time) relative() string {
+	now := time.now()
+	secs := now.unix - t.unix
+	if secs <= 30 {
+		// right now or in the future
+		// TODO handle time in the future
+		return 'now'
+	}
+	if secs < 60 {
+		return '1m'
+	}
+	if secs < 3600 {
+		m := secs/60
+		if m == 1 {
+			return '1 minute ago'
+		}
+		return '$m minutes ago'
+	}
+	if secs < 3600 * 24 {
+		h := secs/3600
+		if h == 1 {
+			return '1 hour ago'
+		}
+		return '$h hours ago'
+	}
+	if secs < 3600 * 24 * 5 {
+		d:=secs/3600/24
+		if d == 1 {
+			return '1 day ago'
+		}
+		return '$d days ago'
+	}
+	if secs > 3600 * 24 * 10000 {
+		return ''
+	}
+	return t.md()
+}
+
+pub fn (t Time) relative_short() string {
 	now := time.now()
 	secs := now.unix - t.unix
 	if secs <= 30 {

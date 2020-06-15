@@ -195,7 +195,7 @@ fn (mut c Checker) check_file_in_main(file ast.File) bool {
 }
 
 fn (mut c Checker) check_valid_snake_case(name, identifier string, pos token.Position) {
-	if name[0] == `_` {
+	if name[0] == `_` && !c.pref.is_vweb {
 		c.error('$identifier `$name` cannot start with `_`', pos)
 	}
 	if util.contains_capital(name) {
@@ -754,6 +754,37 @@ pub fn (mut c Checker) call_expr(mut call_expr ast.CallExpr) table.Type {
 	return c.call_fn(call_expr)
 }
 
+fn (mut c Checker) check_map_and_filter(is_map bool, elem_typ table.Type, call_expr ast.CallExpr) {
+	elem_sym := c.table.get_type_symbol(elem_typ)
+	match call_expr.args[0].expr {
+		ast.AnonFn {
+			if it.decl.args.len > 1 {
+				c.error('function needs exactly 1 argument', call_expr.pos)
+			} else if is_map && (it.decl.return_type != elem_typ || it.decl.args[0].typ != elem_typ) {
+				c.error('type mismatch, should use `fn(a $elem_sym.name) $elem_sym.name {...}`', call_expr.pos)
+			} else if !is_map && (it.decl.return_type != table.bool_type || it.decl.args[0].typ != elem_typ) {
+				c.error('type mismatch, should use `fn(a $elem_sym.name) bool {...}`', call_expr.pos)
+			}
+		}
+		ast.Ident {
+			if it.kind == .function {
+				func := c.table.find_fn(it.name) or {
+					c.error('$it.name is not exist', it.pos)
+					return
+				}
+				if func.args.len > 1 {
+					c.error('function needs exactly 1 argument', call_expr.pos)
+				} else if is_map && (func.return_type != elem_typ || func.args[0].typ != elem_typ) {
+					c.error('type mismatch, should use `fn(a $elem_sym.name) $elem_sym.name {...}`', call_expr.pos)
+				} else if !is_map && (func.return_type != table.bool_type || func.args[0].typ != elem_typ) {
+					c.error('type mismatch, should use `fn(a $elem_sym.name) bool {...}`', call_expr.pos)
+				}
+			}
+		}
+		else {}
+	}
+}
+
 pub fn (mut c Checker) call_method(mut call_expr ast.CallExpr) table.Type {
 	left_type := c.expr(call_expr.left)
 	is_generic := left_type == table.t_type
@@ -764,10 +795,12 @@ pub fn (mut c Checker) call_method(mut call_expr ast.CallExpr) table.Type {
 	// FIXME: Argument count != 1 will break these
 	if left_type_sym.kind == .array && method_name in ['filter', 'clone', 'repeat', 'reverse',
 		'map', 'slice'] {
+		mut elem_typ := table.void_type
 		if method_name in ['filter', 'map'] {
 			array_info := left_type_sym.info as table.Array
 			mut scope := c.file.scope.innermost(call_expr.pos.pos)
 			scope.update_var_type('it', array_info.elem_type)
+			elem_typ = array_info.elem_type
 		}
 		// map/filter are supposed to have 1 arg only
 		mut arg_type := left_type
@@ -777,6 +810,8 @@ pub fn (mut c Checker) call_method(mut call_expr ast.CallExpr) table.Type {
 		call_expr.return_type = left_type
 		call_expr.receiver_type = left_type
 		if method_name == 'map' {
+			// check fn
+			c.check_map_and_filter(true, elem_typ, call_expr)
 			arg_sym := c.table.get_type_symbol(arg_type)
 			// FIXME: match expr failed for now
 			mut ret_type := 0
@@ -785,6 +820,9 @@ pub fn (mut c Checker) call_method(mut call_expr ast.CallExpr) table.Type {
 				else { ret_type = arg_type }
 			}
 			call_expr.return_type = c.table.find_or_register_array(ret_type, 1, c.mod)
+		} else if method_name == 'filter' {
+			// check fn
+			c.check_map_and_filter(false, elem_typ, call_expr)
 		} else if method_name == 'clone' {
 			// need to return `array_xxx` instead of `array`
 			// in ['clone', 'str'] {
@@ -1765,14 +1803,14 @@ pub fn (c &Checker) unwrap_generic(typ table.Type) table.Type {
 
 // TODO node must be mut
 pub fn (mut c Checker) expr(node ast.Expr) table.Type {
-
 	c.expr_level++
-	defer { c.expr_level -- }
+	defer {
+		c.expr_level--
+	}
 	if c.expr_level > 200 {
 		c.error('checker: too many expr levels: $c.expr_level ', node.position())
 		return table.void_type
 	}
-
 	match mut node {
 		ast.AnonFn {
 			keep_fn := c.cur_fn
@@ -1851,7 +1889,12 @@ pub fn (mut c Checker) expr(node ast.Expr) table.Type {
 		ast.ComptimeCall {
 			it.sym = c.table.get_type_symbol(c.unwrap_generic(c.expr(it.left)))
 			if it.is_vweb {
-				mut c2 := new_checker(c.table, c.pref)
+				x := *c.pref
+				xx := {
+					x |
+					is_vweb: true
+				} // TODO assoc parser bug
+				mut c2 := new_checker(c.table, xx)
 				c2.check(it.vweb_tmpl)
 				c.warnings << c2.warnings
 				c.errors << c2.errors
@@ -1909,6 +1952,9 @@ pub fn (mut c Checker) expr(node ast.Expr) table.Type {
 			if it.op == .mul && right_type.is_ptr() {
 				return right_type.deref()
 			}
+			if it.op == .bit_not && !right_type.is_int(){
+				c.error('operator ~ only defined on int types', it.pos)
+			}
 			if it.op == .not && right_type != table.bool_type_idx {
 				c.error('! operator can only be used with bool types', it.pos)
 			}
@@ -1953,7 +1999,8 @@ pub fn (mut c Checker) expr(node ast.Expr) table.Type {
 			if !c.check_types(ltype, table.bool_type) {
 				ltype_sym := c.table.get_type_symbol(ltype)
 				lname := if it.is_likely { '_likely_' } else { '_unlikely_' }
-				c.error('`${lname}()` expects a boolean expression, instead it got `${ltype_sym.name}`', it.pos)
+				c.error('`${lname}()` expects a boolean expression, instead it got `${ltype_sym.name}`',
+					it.pos)
 			}
 			return table.bool_type
 		}
@@ -1984,15 +2031,12 @@ pub fn (mut c Checker) ident(mut ident ast.Ident) table.Type {
 		return table.void_type
 	}
 	// second use
-	if ident.kind == .variable {
+	if ident.kind in [.constant, .global, .variable] {
 		info := ident.info as ast.IdentVar
 		// if info.typ == table.t_type {
 		// Got a var with type T, return current generic type
 		// return c.cur_generic_type
 		// }
-		return info.typ
-	} else if ident.kind == .constant {
-		info := ident.info as ast.IdentVar
 		return info.typ
 	} else if ident.kind == .function {
 		info := ident.info as ast.IdentFn

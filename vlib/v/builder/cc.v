@@ -21,6 +21,10 @@ https://github.com/vlang/v/issues/new/choose
 You can also use #help on Discord: https://discord.gg/vlang
 ')
 
+const (
+	mingw_cc = 'x86_64-w64-mingw32-gcc'
+)
+
 
 fn todo() {
 }
@@ -492,23 +496,42 @@ fn (mut c Builder) cc_linux_cross() {
 			exit(1)
 		}
 	}
+
 	mut cc_args := '-fPIC -w -c -target x86_64-linux-gnu -c -o x.o $c.out_name_c -I $sysroot/include'
+	if c.pref.show_cc {
+		println('cc $cc_args')
+	}
 	if os.system('cc $cc_args') != 0 {
 		println('Cross compilation for Linux failed. Make sure you have clang installed.')
 	}
-	mut args := [
+
+	mut linker_args := [
 		'-L SYSROOT/usr/lib/x86_64-linux-gnu/'
 		'--sysroot=SYSROOT -v -o hi -m elf_x86_64'
 		'-dynamic-linker /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2'
 		'SYSROOT/crt1.o SYSROOT/crti.o x.o'
-		'SYSROOT/lib/x86_64-linux-gnu/libc.so.6'
+		//'SYSROOT/lib/x86_64-linux-gnu/libc.so.6'
 		'-lc'
+		//'-ldl'
+		//'SYSROOT/lib/x86_64-linux-gnu/libcrypto.so'
+		'-lcrypto'
+		'-lssl'
+		//'-dynamic-linker /usr/lib/x86_64-linux-gnu/libcrypto.so'
+		//'SYSROOT/lib/x86_64-linux-gnu/libssl.a'
 		'SYSROOT/crtn.o'
 	]
-	mut s := args.join(' ')
-	s = s.replace('SYSROOT', sysroot)
-	if	os.system('$sysroot/ld.lld ' + s) != 0 {
+	mut s := linker_args.join(' ')
+	s = s.replace('SYSROOT', sysroot) // TODO $ inter bug
+	s = s.replace('-o hi', '-o ' + c.pref.out_name)
+	if c.pref.show_cc {
+		println('$sysroot/ld.lld ' + s)
+	}
+	res :=	os.exec ('$sysroot/ld.lld ' + s) or { return }
+	//println('output:')
+	//println(x.output)
+	if res.exit_code != 0 {
 		println('Cross compilation for Linux failed. Make sure you have clang installed.')
+		return
 	}
 	println(c.pref.out_name + ' has been successfully compiled')
 }
@@ -564,8 +587,7 @@ fn (mut c Builder) cc_windows_cross() {
 		println(os.user_os())
 		panic('your platform is not supported yet')
 	}
-	mut cmd := 'x86_64-w64-mingw32-gcc'
-	cmd += ' $optimization_options $debug_options -std=gnu11 $args -municode'
+	mut cmd := '$mingw_cc $optimization_options $debug_options -std=gnu11 $args -municode'
 	//cmd := 'clang -o $obj_name -w $include -m32 -c -target x86_64-win32 ${pref.default_module_path}/$c.out_name_c'
 	if c.pref.is_verbose || c.pref.show_cc {
 		println(cmd)
@@ -609,8 +631,17 @@ fn (c &Builder) build_thirdparty_obj_files() {
 	}
 }
 
-fn (v &Builder) build_thirdparty_obj_file(path string, moduleflags []cflag.CFlag) {
+fn (mut v Builder) build_thirdparty_obj_file(path string, moduleflags []cflag.CFlag) {
 	obj_path := os.real_path(path)
+	if v.pref.os == .windows {
+		// Cross compiling for Windows
+		$if !windows {
+			if os.exists(obj_path) {
+				os.rm(obj_path)
+			}
+			v.pref.ccompiler = mingw_cc
+		}
+	}
 	if os.exists(obj_path) {
 		return
 	}

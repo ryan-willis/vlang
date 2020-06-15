@@ -373,7 +373,9 @@ fn (cfg DocConfig) gen_html(idx int) string {
 			<ul>')
 	if cfg.is_multi && cfg.docs.len > 1 {
 		mut submod_prefix := ''
-		for i, doc in cfg.docs {
+		mut docs := cfg.docs.filter(it.head.name == 'builtin')
+		docs << cfg.docs.filter(it.head.name != 'builtin')
+		for i, doc in docs {
 			if i-1 >= 0 && doc.head.name.starts_with(submod_prefix + '.') {
 				continue
 			}
@@ -441,13 +443,13 @@ fn (cfg DocConfig) gen_plaintext(idx int) string {
 	dcs := cfg.docs[idx]
 	mut pw := strings.new_builder(200)
 	pw.writeln('${dcs.head.content}\n')
-	if dcs.head.comment.len > 0 {
+	if dcs.head.comment.trim_space().len > 0 {
 		pw.writeln('// ' + dcs.head.comment.replace('\n', '\n// ') + '\n')
 	}
 	for cn in dcs.contents {
 		pw.writeln(cn.content)
 		if cn.comment.len > 0 {
-			pw.writeln('\n' + '\/\/ ' + cn.comment.trim_space())
+			pw.writeln('\/\/ ' + cn.comment.trim_space() + '\n')
 		}
 		if cfg.show_loc {
 			pw.writeln('Location: ${cn.file_path}:${cn.pos.line}:${cn.pos.col}\n\n')
@@ -480,7 +482,9 @@ fn (cfg DocConfig) gen_markdown(idx int, with_toc bool) string {
 
 fn (cfg DocConfig) render() map[string]string {
 	mut docs := map[string]string
+
 	for i, doc in cfg.docs {
+		// since builtin is generated first, ignore it
 		mut name := if doc.head.name == 'README' {
 			'index'
 		} else if !cfg.is_multi && !os.is_dir(cfg.output_path) {
@@ -573,7 +577,12 @@ fn (mut cfg DocConfig) generate_docs_from_file() {
 	for dirpath in dirs {
 		cfg.vprintln('Generating docs for ${dirpath}...')
 		mut dcs := doc.generate(dirpath, cfg.pub_only, true) or {
-			panic(err)
+			mut err_msg := err
+			if errcode == 1 {
+				err_msg += ' Use the `-m` flag if you are generating docs of a directory with multiple modules inside.'
+			}
+			eprintln(err_msg)
+			exit(1)
 		}
 		if dcs.contents.len == 0 { continue }
 		if cfg.is_multi {

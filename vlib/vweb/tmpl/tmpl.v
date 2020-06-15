@@ -26,34 +26,36 @@ enum State {
 	//span // span.{
 }
 
-pub fn compile_template(content, fn_name string) string {
+pub fn compile_template(html_, fn_name string) string {
 	// lines := os.read_lines(path)
-	mut html := content
+	mut html := html_.trim_space()
 	mut header := ''
-	if os.exists('header.html') && html.contains('@header') {
-		h := os.read_file('header.html') or {
-			panic('reading file header.html failed')
+	if os.exists('templates/header.html') && html.contains('@header') {
+		h := os.read_file('templates/header.html') or {
+			panic('reading file templates/header.html failed')
 		}
-		header = h.replace("\'", '"')
+		header = h.trim_space().replace("\'", '"')
 		html = header + html
 	}
-	lines := html.split_into_lines()
+
+	mut lines := html.split_into_lines()
 	mut s := strings.new_builder(1000)
 	// base := path.all_after_last('/').replace('.html', '')
 	s.writeln("
-	import strings
-	// === vweb html template ===
-	fn vweb_tmpl_${fn_name}() {
-	mut sb := strings.new_builder(${lines.len * 30})
-	header := \' \' // TODO remove
-	_ = header
-	//footer := \'footer\'
+import strings
+// === vweb html template ===
+fn vweb_tmpl_${fn_name}() {
+mut sb := strings.new_builder(${lines.len * 30})\n
+header := \' \' // TODO remove
+_ = header
+
 ")
-	s.writeln(str_start)
+	s.write(str_start)
 	mut state := State.html
 	mut in_span := false
-	for _line in lines {
-		line := _line.trim_space()
+	//for _line in lines {
+	for i := 0; i < lines.len; i ++ {
+		line := lines[i].trim_space()
 		if line == '<style>' {
 			state = .css
 		} else if line == '</style>' {
@@ -65,7 +67,38 @@ pub fn compile_template(content, fn_name string) string {
 		else if line == '</script>' {
 			state = .html
 		}
-		if line.contains('@if ') {
+		if line.contains('@include ') && false {
+			// TODO
+			pos := line.index('@include ') or {
+				continue
+			}
+			mut file_name := line[pos + 9..]
+			file_path := os.join_path('templates', '${file_name}.html')
+			mut file_content := os.read_file(file_path) or {
+				panic('reading file $file_name failed')
+			}
+			file_content = file_content.replace("\'", '"')
+			lines2 := file_content.split_into_lines()
+			for l in lines2 {
+				lines.insert(i+1, l)
+			}
+			continue
+			//s.writeln(file_content)
+		} else if line.contains('@js ') {
+			pos := line.index('@js') or {
+				continue
+			}
+			s.write('<script src=') // " is inserted in the template
+			s.write(line[pos + 4..])
+			s.writeln('></script>')
+		} else if line.contains('@css ') {
+			pos := line.index('@css') or {
+				continue
+			}
+			s.write('<link href=')
+			s.write(line[pos + 4..])
+			s.writeln(' rel="stylesheet" type="text/css">')
+		} else if line.contains('@if ') {
 			s.writeln(str_end)
 			pos := line.index('@if') or {
 				continue
@@ -113,7 +146,7 @@ pub fn compile_template(content, fn_name string) string {
 		}
 	}
 	s.writeln(str_end)
-	s.writeln('tmpl_res_$fn_name := sb.str() ')
+	s.writeln('_tmpl_res_$fn_name := sb.str() ')
 	s.writeln('}')
 	s.writeln('// === end of vweb html template ===')
 	return s.str()

@@ -4,9 +4,9 @@
 
 module http
 
-#flag -l Urlmon
+#flag -l urlmon
 
-#include <Urlmon.h>
+#include <urlmon.h>
 
 fn download_file_with_progress(url, out string, cb, cb_finished voidptr) {
 }
