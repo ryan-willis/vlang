@@ -909,7 +909,7 @@ pub fn executable() string {
 		size := max * 2 // max_path_len * sizeof(wchar_t)
 		mut result := &u16(vcalloc(size))
 		len := C.GetModuleFileName(0, result, max)
-		// simply opens the handle
+		// open the handle
 		file := C.CreateFile(result, os.generic_read, os.file_share_read, 0, os.open_existing, os.file_attr_normal, 0)
 		defer {
 			C.CloseHandle(file)
@@ -919,9 +919,15 @@ pub fn executable() string {
 			// https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfinalpathnamebyhandlew
 			mut final_len := C.GetFinalPathNameByHandle(file, final, size, 0)
 			if final_len < size {
-				ret := string_from_wide2(final, final_len)
+				mut ret := string_from_wide2(final, final_len)
 				// remove '\\?\' from beginning
-				return ret[4..]
+				ret = ret[4..]
+				// in the unholy case that a parent directory was a symlink to a network path
+				// PS users: don't worry, named drives resolve to their originals, so
+				// it's okay to check the 2nd character
+				if ret[1..1] == ':' {
+					return ret
+				}
 			}
 			else {
 				eprintln('os.executable() saw that the executable file path was too long')
@@ -980,11 +986,6 @@ fn executable_fallback() string {
 		return ''
 	}
 	mut exepath := os.args[0]
-	$if windows {
-		if !exepath.contains('.exe') {
-			exepath += '.exe'
-		}
-	}
 	if !os.is_abs_path(exepath) {
 		if exepath.contains( os.path_separator ) {
 			exepath = os.join_path(os.wd_at_startup, exepath)

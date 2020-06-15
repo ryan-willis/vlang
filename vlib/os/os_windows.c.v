@@ -6,6 +6,7 @@ import strings
 #include <winsock2.h>
 
 pub const (
+	path_link_prefix = '\\\\?\\'
 	path_separator = '\\'
 	path_delimiter = ';'
 )
@@ -161,7 +162,7 @@ pub fn get_module_filename(handle HANDLE) ?string {
 		mut sz := 4096 // Optimized length
 		mut buf := &u16(malloc(4096))
 		for {
-			status := int(C.GetModuleFileNameW(handle, voidptr(&buf), sz))
+			status := C.GetModuleFileNameW(handle, voidptr(&buf), sz)
 			match status {
 				success {
 					return string_from_wide2(buf, sz)
@@ -293,11 +294,9 @@ pub fn exec(cmd string) ?Result {
 	}
 }
 
-fn C.CreateSymbolicLinkW(&u16, &u16, u32) int
-
 pub fn symlink(origin, target string) ?bool {
 	flags := if os.is_dir(origin) { 1 } else { 0 }
-	if C.CreateSymbolicLinkW(origin.to_wide(), target.to_wide(), u32(flags)) != 0 {
+	if C.CreateSymbolicLink(origin.to_wide(), target.to_wide(), u32(flags)) != 0 {
 		return true
 	}
 	return error(get_error_msg(int(C.GetLastError())))

@@ -13,6 +13,3 @@ pub const (
 	sys_open_nocancel = 398
 	sys_stat64  = 338
 )
-
-
-

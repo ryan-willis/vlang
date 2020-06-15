@@ -160,6 +160,6 @@ pub const (
 // File Permissions
 
 pub const (
-	generic_read                       = 0x80000000
-	open_existing                      = 0x00000003
+	generic_read                       = C.GENERIC_READ
+	open_existing                      = C.OPEN_EXISTING
 )
