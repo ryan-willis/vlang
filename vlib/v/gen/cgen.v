@@ -3761,6 +3761,9 @@ fn (mut g Gen) go_stmt(node ast.GoStmt) {
 	g.type_definitions.writeln('} $wrapper_struct_name;')
 	g.type_definitions.writeln('void* ${wrapper_fn_name}($wrapper_struct_name *arg);')
 	g.gowrappers.writeln('void* ${wrapper_fn_name}($wrapper_struct_name *arg) {')
+	if g.pref.os != .windows {
+		g.gowrappers.writeln('\tpthread_detach(pthread_self());')
+	}
 	g.gowrappers.write('\t${name}(')
 	if expr.is_method {
 		g.gowrappers.write('arg->arg0')
