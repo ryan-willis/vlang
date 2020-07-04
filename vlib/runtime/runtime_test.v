@@ -29,6 +29,10 @@ fn test_is_big_endian_different_than_is_little_endian(){
 	assert runtime.is_big_endian() != runtime.is_little_endian()
 }
 
-fn test_is_32bit_different_than_is_64bit(){	
+fn test_is_32bit_different_than_is_64bit(){
 	assert runtime.is_32bit() != runtime.is_64bit()
+}
+
+fn test_current_process_mem_usage() {
+	assert runtime.current_process_mem_usage() > 0
 }

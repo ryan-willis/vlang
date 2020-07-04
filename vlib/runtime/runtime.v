@@ -6,29 +6,23 @@ module runtime
 
 import os
 
-//$if linux {
-fn C.sysconf(name int) i64
-//}
-
-//$if windows {
-fn C.GetCurrentProcessorNumber() u32
-//}
-
 pub fn nr_cpus() int {
 	$if windows {
 		return nr_cpus_win()
 	}
-	return nr_cpus_nix()
+	$if !windows {
+		return nr_cpus_nix()
+	}
 }
 
 pub fn nr_jobs() int {
-	mut cpus := nr_cpus()
+	mut jobs := nr_cpus()
 	// allow for overrides, for example using `VJOBS=32 ./v test .`
 	vjobs := os.getenv('VJOBS').int()
 	if vjobs > 0 {
-		cpus = vjobs
+		jobs = vjobs
 	}
-	return cpus
+	return jobs
 }
 
 pub fn is_32bit() bool {
@@ -53,4 +47,13 @@ pub fn is_big_endian() bool {
 	mut x := false
 	$if big_endian { x = true }
 	return x
+}
+
+pub fn current_process_mem_usage() u32 {
+	$if windows {
+		return win_cur_proc_mem_use()
+	}
+	$if !windows {
+		return nix_cur_proc_mem_use()
+	}
 }
