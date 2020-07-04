@@ -2,6 +2,7 @@
 
 echo Building V
 
+set tcc_url=https://github.com/vlang/tccbin_win
 set tcc_path=%~dp0thirdparty\tcc\
 pushd %~dp0
 
@@ -87,7 +88,7 @@ if %ERRORLEVEL% NEQ 0 goto :compile_error
 goto :success
 
 :clone_tcc
-git clone --depth 1 --quiet https://github.com/vlang/tccbin_win %tcc_path%
+git clone --depth 1 --quiet %tcc_url% %tcc_path%
 set cloned_tcc=1
 goto :tcc_strap
 
@@ -101,7 +102,7 @@ if %ERRORLEVEL% NEQ 0 (
 		set tcc_exe=%tcc_path%tcc.exe
 	) else if "%cloned_tcc%"=="" (
 		echo  ^> TCC not found
-		echo  ^> Downloading TCC from https://github.com/vlang/tccbin_win
+		echo  ^> Downloading TCC from %tcc_url%
 		goto :clone_tcc
 	) else (
 		echo  ^> TCC not found, even after cloning
@@ -119,7 +120,7 @@ if exist "%tcc_path%" (
 		popd
 	)
 )
-call "%tcc_exe%" -std=c99 -municode -lws2_32 -lshell32 -ladvapi32 -bt10 -w -o v.exe vc\v_win.c
+call "%tcc_exe%" -std=c99 -municode -lws2_32 -lshell32 -ladvapi32 -lkernel32 -bt10 -w -o v.exe vc\v_win.c
 if %ERRORLEVEL% NEQ 0 goto :compile_error
 
 v.exe -cc "%tcc_exe%" self > NUL
