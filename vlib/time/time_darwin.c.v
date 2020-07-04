@@ -83,3 +83,17 @@ fn darwin_utc() Time {
 
 	return unix2(int(tv.tv_sec), int(tv.tv_usec))
 }
+
+// dummies for cross-compile
+pub fn linux_now() Time {
+	return Time{}
+}
+pub fn solaris_now() Time {
+	return Time{}
+}
+pub fn linux_utc() Time {
+	return Time{}
+}
+pub fn solaris_utc() Time {
+	return Time{}
+}

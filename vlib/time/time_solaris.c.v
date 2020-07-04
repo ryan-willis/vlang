@@ -28,21 +28,19 @@ fn solaris_utc() Time {
 }
 
 // dummy to compile with all compilers
-pub fn linux_now() Time {
+fn linux_now() Time {
 	return Time{}
 }
 
-// dummy to compile with all compilers
-pub fn darwin_now() Time {
+fn linux_utc() Time {
 	return Time{}
 }
-
-// dummy to compile with all compilers
-pub fn linux_utc() Time {
+fn darwin_now() Time {
 	return Time{}
 }
-
-// dummy to compile with all compilers
-pub fn darwin_utc() Time {
+fn darwin_utc() Time {
 	return Time{}
+}
+fn sys_mono_now_darwin() u64 {
+	return 0
 }
