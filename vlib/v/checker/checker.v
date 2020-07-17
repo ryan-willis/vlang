@@ -2915,7 +2915,6 @@ pub fn (mut c Checker) postfix_expr(mut node ast.PostfixExpr) table.Type {
 	typ_sym := c.table.get_type_symbol(typ)
 	// if !typ.is_number() {
 	if !typ_sym.is_number() {
-		println(typ_sym.kind.str())
 		c.error('invalid operation: $node.op.str() (non-numeric type `$typ_sym.name`)',
 			node.pos)
 	} else {
@@ -3228,7 +3227,6 @@ fn (mut c Checker) fn_decl(mut node ast.FnDecl) {
 			mut idx := 0
 			for i, m in sym.methods {
 				if m.name == node.name {
-					println('got it')
 					idx = i
 					break
 				}

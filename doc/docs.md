@@ -29,7 +29,7 @@ you can do in V.
     * [Numbers](#numbers)
     * [Arrays](#arrays)
     * [Maps](#maps)
-* [Imports](#imports)
+* [Module Imports](#module-imports)
 * [Statements & Expressions](#statements--expressions)
     * [If](#if)
     * [In Operator](#in-operator)
@@ -547,7 +547,13 @@ numbers := {
 }
 ```
 
-## Imports
+## Module Imports
+
+For information about creating a module, see [Modules](#modules)
+
+### Importing a Module
+
+Modules can be imported using keyword `import`.
 
 ```v
 import os
@@ -558,7 +564,55 @@ fn main() {
 }
 ```
 
-Modules can be imported using keyword `import`. When using types, functions, and constants from other modules, the full path must be specified. In the example above, `name := input()` wouldn't work. That means that it's always clear from which module a function is called.
+ When using types, functions, and constants from other modules, the module name must be prefixed. In the example above, `name := input()` wouldn't work. That ensures that it is always clear from which module a function is called.
+
+If the module contains a sub-module, it will be imported as its own name:
+
+```v
+import os
+import crypto.sha256
+
+fn main() {
+    input := os.input('Enter a string to be hashed:')
+    // cryptos.sha256.sum() will not work
+    hashed := sha256.sum(imput.bytes()).hex()
+    println(hashed)
+}
+```
+
+### Module Import Aliasing
+
+Any imported module name can be aliased using the `as` keyword:
+
+NOTE: this example will not compile unless you have created `mymod/sha256.v`
+```v
+import crypto.sha256
+import mymod.sha256 as mysha256
+
+fn main() {
+    v_hash := sha256.sum('hi'.bytes()).hex()
+    my_hash := mysha256.sum('hi'.bytes()).hex()
+    assert my_hash == v_hash
+}
+```
+
+### Module Import Shorthand
+
+Importing several modules including the root module (`crypto` in this example) can be performed with shorthand:
+
+```v
+import crypto { md5, sha256, sha512 }
+
+fn main() {
+    imput := os.input('Enter a string to be hashed:')
+    hash_md5 := md5.sum(input.bytes()).hex()
+    hash_sha256 := sha256.sum(input.bytes()).hex()
+    hash_sha512 := sha512.sum(input.bytes()).hex()
+    println('md5    : ' + hash_md5)
+    println('sha256 : ' + hash_sha256)
+    println('sha512 : ' + hash_sha512)
+}
+```
 
 ## Statements & Expressions
 

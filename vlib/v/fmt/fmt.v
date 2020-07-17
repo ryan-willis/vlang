@@ -77,6 +77,9 @@ pub fn fmt(file ast.File, table &table.Table, is_debug bool) string {
 pub fn (mut f Fmt) process_file_imports(file &ast.File) {
 	for imp in file.imports {
 		f.mod2alias[imp.mod.all_after_last('.')] = imp.alias
+		for sub in imp.subs {
+			f.mod2alias[sub.mod.all_after_last('.')] = sub.alias
+		}
 	}
 }
 
@@ -212,6 +215,9 @@ pub fn (mut f Fmt) imports(imports []ast.Import) {
 	*/
 	// f.out_imports.writeln('import (')
 	for imp in imports {
+		if imp.is_sub {
+			continue
+		}
 		if imp.mod !in f.used_imports {
 			// TODO bring back once only unused imports are removed
 			// continue
@@ -219,7 +225,7 @@ pub fn (mut f Fmt) imports(imports []ast.Import) {
 		// f.out_imports.write('\t')
 		// f.out_imports.writeln(f.imp_stmt_str(imp))
 		f.out_imports.write('import ')
-		f.out_imports.writeln(f.imp_stmt_str(imp))
+		f.out_imports.writeln(f.imp_stmt_str(&imp))
 	}
 	f.out_imports.writeln('')
 	// f.out_imports.writeln(')\n')
@@ -228,7 +234,10 @@ pub fn (mut f Fmt) imports(imports []ast.Import) {
 
 pub fn (f Fmt) imp_stmt_str(imp ast.Import) string {
 	is_diff := imp.alias != imp.mod && !imp.mod.ends_with('.' + imp.alias)
-	imp_alias_suffix := if is_diff { ' as $imp.alias' } else { '' }
+	mut imp_alias_suffix := if is_diff { ' as $imp.alias' } else { '' }
+	if imp.subs.len > 0 {
+		imp_alias_suffix = ' { ' + imp.subs.map(it.alias).join(', ') + ' }'
+	}
 	return '$imp.mod$imp_alias_suffix'
 }
 

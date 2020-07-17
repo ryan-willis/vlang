@@ -1323,6 +1323,7 @@ fn (mut p Parser) module_decl() ast.Module {
 }
 
 fn (mut p Parser) import_stmt() ast.Import {
+	mut node := ast.Import{}
 	import_pos := p.tok.position()
 	p.check(.key_import)
 	pos := p.tok.position()
@@ -1331,17 +1332,22 @@ fn (mut p Parser) import_stmt() ast.Import {
 	}
 	mut mod_name := p.check_name()
 	if import_pos.line_nr != pos.line_nr {
-		p.error_with_pos('`import` and `module` must be at same line', pos)
+		p.error_with_pos('`import` statements must be a single line', pos)
 	}
 	mut mod_alias := mod_name
 	for p.tok.kind == .dot {
 		p.next()
 		pos_t := p.tok.position()
 		if p.tok.kind != .name {
+			if p.tok.kind == .key_as {
+				break
+			}
 			p.error_with_pos('module syntax error, please use `x.y.z`', pos)
+			return node
 		}
 		if import_pos.line_nr != pos_t.line_nr {
 			p.error_with_pos('`import` and `submodule` must be at same line', pos)
+			return node
 		}
 		submod_name := p.check_name()
 		mod_name += '.' + submod_name
@@ -1351,23 +1357,86 @@ fn (mut p Parser) import_stmt() ast.Import {
 		p.next()
 		mod_alias = p.check_name()
 	}
+	node = ast.Import{
+		pos: pos,
+		mod: mod_name,
+		alias: mod_alias,
+		is_sub: false
+	}
+	mut correct_last_token := token.Kind.name
+	if p.tok.kind == .lcbr { // import module { submod1, submod2 } syntax
+		p.import_submodules(node)
+		p.register_used_import(mod_alias) // disables `unused import` msg for parent
+		correct_last_token = .rcbr
+	}
+	p.import_store(node)
 	pos_t := p.tok.position()
 	if import_pos.line_nr == pos_t.line_nr {
-		if p.tok.kind != .name {
-			p.error_with_pos('module syntax error, please use `x.y.z`', pos_t)
+		if p.tok.kind != correct_last_token {
+			if p.tok.kind == .lcbr {
+				p.error_with_pos('module syntax error, cannot import symbols from $node.mod', pos_t)
+			} else {
+				p.error_with_pos('module syntax error, please use `x.y.z`', pos_t)
+			}
+			return node
 		} else {
 			p.error_with_pos('cannot import multiple modules at a time', pos_t)
+			return node
 		}
 	}
-	p.imports[mod_alias] = mod_name
-	p.table.imports << mod_name
-	node := ast.Import{
-		mod: mod_name
-		alias: mod_alias
-		pos: pos
-	}
-	p.ast_imports << node
 	return node
+}
+
+fn (mut p Parser) import_store(node ast.ImportModule) {
+	mod := node.mod()
+	alias := node.alias()
+	p.imports[alias] = mod
+	p.table.imports << mod
+	if node is ast.Import {
+		p.ast_imports << node
+	}
+	if node is ast.ImportSub {
+		// AST import, tell fmt to skip
+		p.ast_imports << ast.Import{
+			pos: node.pos,
+			mod: node.mod,
+			alias: node.alias,
+			is_sub: true
+		}
+	}
+}
+
+// import_inner_stmt parses the inner part of `import module { submod1, submod2 }`
+fn (mut p Parser) import_submodules(mut parent ast.Import) {
+	p.next()
+	pos_t := p.tok.position()
+	if p.tok.kind == .rcbr { // closed too early
+		p.error_with_pos('empty `$parent.mod` import set, remove `{}`', pos_t)
+	}
+	if p.tok.kind != .name { // not a valid inner name
+		p.error_with_pos('import syntax error, please specify a valid module name', pos_t)
+	}
+	for p.tok.kind == .name {
+		pos := p.tok.position()
+		alias := p.check_name()
+		mod := parent.mod + '.' + alias
+		sub := ast.ImportSub{pos, mod, alias}
+		p.import_store(sub)
+		parent.subs << sub
+		if p.tok.kind == .comma { // go again if more than one
+			p.next()
+			continue
+		}
+		if p.tok.kind == .rcbr { // finish if closing `}` is seen
+			break
+		}
+		// this should never be seen
+		p.error_with_pos('import syntax error, unexpected token', pos)
+	}
+	if p.tok.kind != .rcbr {
+		p.error_with_pos('import syntax error, no closing `}`', p.tok.position())
+	}
+	p.next()
 }
 
 fn (mut p Parser) const_decl() ast.ConstDecl {

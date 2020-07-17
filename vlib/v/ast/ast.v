@@ -208,9 +208,37 @@ pub mut:
 // import statement
 pub struct Import {
 pub:
-	pos   token.Position
-	mod   string
-	alias string
+	pos    token.Position
+	mod    string
+	alias  string
+	is_sub bool = false
+pub mut:
+	subs   []ImportSub
+}
+
+// child import { submod1, submod2 }
+pub struct ImportSub {
+pub:
+	pos    token.Position
+	mod    string
+	alias  string
+	is_sub bool = true
+}
+
+pub type ImportModule = Import | ImportSub
+
+pub fn (mi ImportModule) mod() string {
+	match mi as i {
+		Import    { return i.mod }
+		ImportSub { return i.mod }
+	}
+}
+
+pub fn (mi ImportModule) alias() string {
+	match mi as i {
+		Import    { return i.alias }
+		ImportSub { return i.alias }
+	}
 }
 
 pub struct AnonFn {
