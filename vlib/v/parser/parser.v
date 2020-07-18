@@ -1339,15 +1339,10 @@ fn (mut p Parser) import_stmt() ast.Import {
 		p.next()
 		pos_t := p.tok.position()
 		if p.tok.kind != .name {
-			if p.tok.kind == .key_as {
-				break
-			}
 			p.error_with_pos('module syntax error, please use `x.y.z`', pos)
-			return node
 		}
 		if import_pos.line_nr != pos_t.line_nr {
 			p.error_with_pos('`import` and `submodule` must be at same line', pos)
-			return node
 		}
 		submod_name := p.check_name()
 		mod_name += '.' + submod_name
@@ -1378,10 +1373,8 @@ fn (mut p Parser) import_stmt() ast.Import {
 			} else {
 				p.error_with_pos('module syntax error, please use `x.y.z`', pos_t)
 			}
-			return node
 		} else {
 			p.error_with_pos('cannot import multiple modules at a time', pos_t)
-			return node
 		}
 	}
 	return node
