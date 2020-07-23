@@ -107,21 +107,17 @@ fn decode_string(root &C.cJSON) string {
 
 fn C.cJSON_IsTrue() bool
 
-
 fn C.cJSON_CreateNumber() &C.cJSON
-
 
 fn C.cJSON_CreateBool() &C.cJSON
 
-
 fn C.cJSON_CreateString() &C.cJSON
-
 
 fn C.cJSON_Parse() &C.cJSON
 
+fn C.cJSON_Delete(&C.cJSON)
 
 fn C.cJSON_PrintUnformatted() byteptr
-
 
 fn decode_bool(root &C.cJSON) bool {
 	if isnil(root) {
@@ -187,7 +183,10 @@ fn json_parse(s string) &C.cJSON {
 // json_string := json_print(encode_User(user))
 fn json_print(json &C.cJSON) string {
 	s := C.cJSON_PrintUnformatted(json)
-	return unsafe { tos(s, C.strlen(s)) }
+	str := unsafe { tos(s, C.strlen(s)) }
+	// since this was a temporary variable used in `json.encode`, free resources
+	C.cJSON_Delete(json)
+	return str
 }
 
 // /  cjson wrappers
